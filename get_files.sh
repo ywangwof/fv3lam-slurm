@@ -13,7 +13,7 @@ elif [[ $host_name =~ "4373-Wang-mbp" ]]; then
 else
   machine="UNKOWN"
   echo "ERROR: unsupported machine - $host_name"
-  exit 0
+  exit 1
 fi
 
 ##---------------- Prepare Python environment --------------------------
@@ -72,7 +72,13 @@ echo "$taskheader" | cat - ${jobscript} > temp && mv temp ${jobscript}
 chmod +x ${jobscript}
 
 ${jobscript} >& out.get_files_ics
-
+RC=$?
+if [ $RC = 0 ]; then
+    echo "ICs downloaded successfully (logfile is out.get_files_ics)"
+else
+    echo "An error occured while downloading ICs, check logfile out.get_files_ics"
+    exit 1
+fi
 
 #
 # Step 2.  Get files for LBCs
@@ -94,6 +100,12 @@ echo "$taskheader" | cat - ${jobscript} > temp && mv temp ${jobscript}
 
 chmod +x ${jobscript}
 
-${jobscript} >& out.get_files_lbc
-
-exit 0
+${jobscript} >& out.get_files_lbcs
+RC=$?
+if [ $RC = 0 ]; then
+    echo "LBCs downloaded successfully (logfile is out.get_files_lbcs)"
+    exit 0
+else
+    echo "An error occured while downloading LBCs, check logfile out.get_files_lbcs"
+    exit 1
+fi
