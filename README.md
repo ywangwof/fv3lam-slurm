@@ -16,7 +16,7 @@ Step 3: run _run_fv3lam.sh_ following these steps one by one
     3.2: run_fv3lam.sh var_defns.sh orog
     3.3: run_fv3lam.sh var_defns.sh sfc
     3.4: run_fv3lam.sh var_defns.sh ics
-    3.5: run_fv3lam.sh var_defns.sh lbc
+    3.5: run_fv3lam.sh var_defns.sh lbcs
     3.6: run_fv3lam.sh var_defns.sh fcst
     3.7: run_fv3lam.sh var_defns.sh post
 
