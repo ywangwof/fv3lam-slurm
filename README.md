@@ -4,12 +4,12 @@ Step 0: Edit file `config.sh` following instructions on [SRW Application Getting
  and/or [Getting Started on Stampede](https://github.com/ywangwof/ufs-srweather-app/wiki/Getting-Started-on-Stampede).
 
 Step 1: run `ush/generate_FV3SAR_wflow.sh`
-        and link/copy _${EXPTDIR}/var_defns.sh_ to this script directory
+        and link/copy `${EXPTDIR}/var_defns.sh` to this script directory
 
 Step 2: Stage exernal model files
-        $> `get_files.sh var_defns.sh`
+        `$> get_files.sh var_defns.sh`
 
-Step 3: run _run_fv3lam.sh_ following the following steps one by one
+Step 3: run `run_fv3lam.sh` following the following steps one by one
 
     3.1: run_fv3lam.sh var_defns.sh grid
     3.2: run_fv3lam.sh var_defns.sh orog
@@ -19,6 +19,6 @@ Step 3: run _run_fv3lam.sh_ following the following steps one by one
     3.6: run_fv3lam.sh var_defns.sh fcst
     3.7: run_fv3lam.sh var_defns.sh post
 
-**Note**:
-    - Step 3.1 - 3.7 will generate job script (SLURM) and then submit the job (run the job script directly on MacOS).
-    - Step 0, 1 and 2 will run the scripts on the front node.
+**Note**:  
+    - Step 3.1 - 3.7 will generate job script (SLURM) and then submit the job (run the job script directly on MacOS).  
+    - Step 0, 1 and 2 will run the scripts on the front node.  
