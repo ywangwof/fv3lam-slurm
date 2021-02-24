@@ -251,8 +251,8 @@ if [[ $show -ne 1 ]]; then
         echo "    log/out.${tasknames[$task]}_${jobid}"
         echo "    log/err.${tasknames[$task]}_${jobid}"
         echo " "
-        touch log/out.${tasknames[$task]}_${jobid}
-        touch log/err.${tasknames[$task]}_${jobid}
+        touch out.${tasknames[$task]}_${jobid}
+        touch err.${tasknames[$task]}_${jobid}
     elif [[ $machine = "odin" ]]; then
         sbatch ${jobscript}
     else
