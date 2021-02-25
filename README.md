@@ -18,7 +18,7 @@ Step 3: run `run_fv3lam.sh` following the following steps one by one
     3.6: run_fv3lam.sh var_defns.sh fcst
     3.7: run_fv3lam.sh var_defns.sh post
 
-**Note**:  
-    - Step 3.1 - 3.7 will generate job script (SLURM) and then submit the job (run the job script directly on macOS).
+**Note**:   
+    - Step 3.1 - 3.7 will generate job script (SLURM) and then submit the job (run the job script directly on macOS).  
     - Step 0, 1 and 2 will run the scripts on the front node.  
-    - Using these scripts on macOS is not recommended to users of the UFS Short Range Weather public release v1.0.0. Instead, follow the instructions in the [user's guide](https://ufs-srweather-app.readthedocs.io/en/latest/ConfigNewPlatform.html)
+    - Using these scripts on macOS is not recommended to users of the UFS Short Range Weather public release v1.0.0. Instead, follow the instructions in the [user's guide](https://ufs-srweather-app.readthedocs.io/en/latest/ConfigNewPlatform.html)  
