@@ -74,9 +74,9 @@ chmod +x ${jobscript}
 ${jobscript} >& out.get_files_ics
 RC=$?
 if [ $RC = 0 ]; then
-    echo "ICs downloaded successfully (logfile is out.get_files_ics)"
+    echo "ICs downloaded successfully (see ${LOGDIR}/out.get_files_ics)"
 else
-    echo "An error occured while downloading ICs, check logfile out.get_files_ics"
+    echo "An error occured while downloading ICs, check logfile ${LOGDIR}/out.get_files_ics"
     exit 1
 fi
 
@@ -103,9 +103,9 @@ chmod +x ${jobscript}
 ${jobscript} >& out.get_files_lbcs
 RC=$?
 if [ $RC = 0 ]; then
-    echo "LBCs downloaded successfully (logfile is out.get_files_lbcs)"
+    echo "LBCs downloaded successfully (see ${LOGDIR}/out.get_files_lbcs)"
     exit 0
 else
-    echo "An error occured while downloading LBCs, check logfile out.get_files_lbcs"
+    echo "An error occured while downloading LBCs, check logfile ${LOGDIR}/out.get_files_lbcs"
     exit 1
 fi

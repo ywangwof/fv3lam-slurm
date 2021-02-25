@@ -248,8 +248,8 @@ if [[ $show -ne 1 ]]; then
         jobid=${words[-1]}
         echo " "
         echo "Logfiles for this job (once started) are:"
-        echo "    log/out.${tasknames[$task]}_${jobid}"
-        echo "    log/err.${tasknames[$task]}_${jobid}"
+        echo "    ${LOGDIR}/out.${tasknames[$task]}_${jobid}"
+        echo "    ${LOGDIR}/err.${tasknames[$task]}_${jobid}"
         echo " "
         touch out.${tasknames[$task]}_${jobid}
         touch err.${tasknames[$task]}_${jobid}
