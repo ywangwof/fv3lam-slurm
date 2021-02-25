@@ -261,7 +261,7 @@ else
         #touch err.${tasknames[$task]}_${jobid}
     else
         chmod +x ${jobscript}
-        ${jobscript}
+        ${jobscript} |& ${LOGDIR}/out.${tasknames[$task]}_${jobid}
     fi
 fi
 
