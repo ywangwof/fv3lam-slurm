@@ -31,7 +31,6 @@ function usage {
 show=0
 verb=0
 task=" "
-xmlparser="$(dirname $0)/read_xml.py"
 VARDEFNS="../var_defns.sh"
 host_name=$(hostname)
 if [[ $host_name =~ "stampede2" ]]; then
@@ -44,6 +43,7 @@ else
   machine="UNKOWN"
 fi
 
+xmlparser="python $(dirname $0)/read_xml.py"
 #-----------------------------------------------------------------------
 #
 # Handle command line arguments
@@ -99,6 +99,43 @@ else
     echo "ERROR: cannot find var_defns.sh - <$VARDEFNS>."
     usage -2
 fi
+
+##---------------- Prepare Python environment --------------------------
+
+case $machine in
+    odin)
+        read -r -d '' pythonstring <<- EOM
+		source /scratch/software/Odin/python/anaconda2/etc/profile.d/conda.sh
+		conda activate regional_workflow
+EOM
+        ;;
+    stampede)
+		pythonstring="module load python3/3.7.0"
+        ;;
+    macos)
+        read -r -d '' pythonstring <<- EOM
+		source ~/.python
+		conda activate regional_workflow
+EOM
+        ;;
+    *)
+        echo "ERROR: unsupported machine - $machine"
+        usage 0
+        ;;
+esac
+
+if [[ $verb -eq 1 ]]; then
+    echo "machine  = \"${machine}\""
+fi
+
+#
+# Source python string for this script
+#
+IFS=$'\n' pyenv=($pythonstring)
+for pye in ${pyenv[@]}; do
+    IFS=$' ' pys=(${pye})
+    ${pys[*]}
+done
 
 #-----------------------------------------------------------------------
 #
@@ -157,34 +194,6 @@ fi
 if [[ $verb -eq 1 ]]; then
     echo "task     = \"$task\",   taskname = \"${tasknames[$task]}\""
     echo "nodes    = \"$nodes\",  ppn = \"$ppn\",   walltime = \"$walltime\",   queue = \"$queue\""
-fi
-
-##---------------- Prepare Python environment --------------------------
-
-case $machine in
-    odin)
-        read -r -d '' pythonstring <<- EOM
-		source /scratch/software/Odin/python/anaconda2/etc/profile.d/conda.sh
-		conda activate regional_workflow
-EOM
-        ;;
-    stampede)
-        pythonstring="module load python3/3.7.0"
-        ;;
-    macos)
-        read -r -d '' pythonstring <<- EOM
-		source ~/.python
-		conda activate regional_workflow
-EOM
-        ;;
-    *)
-        echo "ERROR: unsupported machine - $machine"
-        usage 0
-        ;;
-esac
-
-if [[ $verb -eq 1 ]]; then
-    echo "machine  = \"${machine}\""
 fi
 
 ##================ Prepare job script ==================================
@@ -249,16 +258,20 @@ if [[ $show -eq 1 ]]; then
 else
     if [[ $wflow -eq 1 ]]; then
         output=$(sbatch ${jobscript})
-        echo "${output}"
-        words=(${output})
-        jobid=${words[-1]}
-        echo " "
-        echo "Logfiles for this job (once started) are:"
-        echo "    ${LOGDIR}/out.${tasknames[$task]}_${jobid}"
-        echo "    ${LOGDIR}/err.${tasknames[$task]}_${jobid}"
-        echo " "
-        #touch out.${tasknames[$task]}_${jobid}
-        #touch err.${tasknames[$task]}_${jobid}
+        if [[ $? -eq 0 ]]; then
+            echo "${output}"
+            words=(${output})
+            jobid=${words[-1]}
+            echo " "
+            echo "Logfiles for this job (once started) are:"
+            echo "    ${LOGDIR}/out.${tasknames[$task]}_${jobid}"
+            echo "    ${LOGDIR}/err.${tasknames[$task]}_${jobid}"
+            echo " "
+            #touch out.${tasknames[$task]}_${jobid}
+            #touch err.${tasknames[$task]}_${jobid}
+        else
+            echo "${output}"
+        fi
     else
         chmod +x ${jobscript}
         ${jobscript} |& ${LOGDIR}/out.${tasknames[$task]}_${jobid}
