@@ -128,9 +128,9 @@ EOF
 sed "1d" ${CODEBASE}/ush/wrappers/run_get_ics.sh > ${jobscript}
 echo "$taskheader" | cat - ${jobscript} > temp && mv temp ${jobscript}
 
-if [[ $verb -eq 1 ]]; then
+#if [[ $verb -eq 1 ]]; then
     echo "jobscript: $WRKDIR/$jobscript is created."
-fi
+#fi
 
 chmod +x ${jobscript}
 if [[ $show -eq 1 ]]; then
@@ -161,9 +161,9 @@ EOF
 sed "1d" ${CODEBASE}/ush/wrappers/run_get_lbcs.sh > ${jobscript}
 echo "$taskheader" | cat - ${jobscript} > temp && mv temp ${jobscript}
 
-if [[ $verb -eq 1 ]]; then
+#if [[ $verb -eq 1 ]]; then
     echo "jobscript: $WRKDIR/$jobscript is created."
-fi
+#fi
 
 chmod +x ${jobscript}
 

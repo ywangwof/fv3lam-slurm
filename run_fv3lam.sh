@@ -245,9 +245,9 @@ sed "1d" ${CODEBASE}/ush/wrappers/${wrappers[$task]}  > ${jobscript}
 
 echo "$taskheader" | cat - ${jobscript} > temp && mv temp ${jobscript}
 
-if [[ $verb -eq 1 ]]; then
+#if [[ $verb -eq 1 ]]; then
     echo "jobscript: $WRKDIR/$jobscript is created."
-fi
+#fi
 
 if [[ $show -eq 1 ]]; then
     if [[ $wflow -eq 1 ]]; then
