@@ -114,7 +114,7 @@ EOM
         ;;
     macos)
         read -r -d '' pythonstring <<- EOM
-		source ~/.python
+		source /Users/yunheng.wang/.python
 		conda activate regional_workflow
 EOM
         ;;
