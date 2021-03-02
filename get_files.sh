@@ -13,8 +13,8 @@ function usage {
     echo "              -h              Display this message"
     echo "              -n              Show command to be run only"
     echo "              -v              Verbose mode"
-    echo "              -m   odin       Machine (odin, stampede or macos)"
-    echo "                              default, determine automatically based on hostname."
+    #echo "              -m   odin       Machine (odin, stampede or macos)"
+    #echo "                              default, determine automatically based on hostname."
     echo " "
     echo "                                     -- By Y. Wang (2020.10.21)"
     echo " "
@@ -32,16 +32,16 @@ verb=0
 
 VARDEFNS="../var_defns.sh"
 
-host_name=$(hostname)
-if [[ $host_name =~ "stampede2" ]]; then
-  machine="stampede"
-elif [[ $host_name =~ "odin" ]]; then
-  machine="odin"
-elif [[ $host_name =~ "4373-Wang-mbp" ]]; then
-  machine="macos"
-else
-  machine="UNKOWN"
-fi
+#host_name=$(hostname)
+#if [[ $host_name =~ "stampede2" ]]; then
+#  machine="stampede"
+#elif [[ $host_name =~ "odin" ]]; then
+#  machine="odin"
+#elif [[ $host_name =~ "4373-Wang-mbp" ]]; then
+#  machine="macos"
+#else
+#  machine="UNKOWN"
+#fi
 
 #-----------------------------------------------------------------------
 #
@@ -63,10 +63,10 @@ while [[ $# > 0 ]]
         -v)
             verb=1
             ;;
-        -m)
-            machine=$2
-            shift
-            ;;
+        #-m)
+        #    machine=$2
+        #    shift
+        #    ;;
         -*)
             echo "Unknown option: $key"
             exit
@@ -101,30 +101,6 @@ fi
 VARDEFNS="$(realpath ${VARDEFNS})"
 source ${VARDEFNS}
 
-##---------------- Prepare Python environment --------------------------
-
-case $machine in
-    odin)
-        read -r -d '' pythonstring <<- EOM
-		source /scratch/software/Odin/python/anaconda2/etc/profile.d/conda.sh
-		conda activate regional_workflow
-EOM
-        ;;
-    stampede)
-        pythonstring="module load python3/3.7.0"
-        ;;
-    macos)
-        read -r -d '' pythonstring <<- EOM
-		source ~/.python
-		conda activate regional_workflow
-EOM
-        ;;
-    *)
-        echo "ERROR: unsupported machine - $machine"
-        usage 0
-        ;;
-esac
-
 ##@@@@@@@@@@@@@@@@@@@@@ Run shell script @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 CODEBASE="${HOMErrfs}"
@@ -144,8 +120,6 @@ jobscript="get_ics_files.sh"
 
 read -r -d '' taskheader <<EOF
 #!/bin/bash
-
-${pythonstring}
 
 export EXPTDIR=${EXPTDIR}
 
@@ -179,8 +153,6 @@ jobscript="get_lbc_files.sh"
 
 read -r -d '' taskheader <<EOF
 #!/bin/bash
-
-${pythonstring}
 
 export EXPTDIR=${EXPTDIR}
 
