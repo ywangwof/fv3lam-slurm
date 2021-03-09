@@ -16,6 +16,8 @@ function usage {
     echo "              -v              Verbose mode"
     echo "              -m   odin       Machine (odin, stampede or macos)"
     echo "                              default, determine automatically based on hostname."
+    echo "              -a   0          Job arrays (same rule as SLURM job array option \"-a\")"
+    echo "                              The last 3 digits of the EXPTDIR will the ensemble member and the array task id."
     echo " "
     echo "                                     -- By Y. Wang (2020.10.21)"
     echo " "
@@ -43,6 +45,8 @@ else
   machine="UNKOWN"
 fi
 
+nens=0
+
 xmlparser="python $(dirname $0)/read_xml.py"
 #-----------------------------------------------------------------------
 #
@@ -67,6 +71,16 @@ while [[ $# > 0 ]]
         -m)
             machine=$2
             shift
+            ;;
+        -a)
+            if [[ $2 =~ ^[0-9,-]+$ ]]; then
+              nens=$2
+              shift
+            else
+                echo ""
+                echo "ERROR: ensemble job array not recognized, get [$2]."
+                usage -2
+            fi
             ;;
         -*)
             echo "Unknown option: $key"
@@ -207,6 +221,39 @@ fi
 
 cd $WRKDIR
 
+#
+# ensemble specific
+#
+if [[ $nens -ne 0 ]]; then
+    logstr="${tasknames[$task]}_%j_%a"
+    memstr='mid=$(printf "%03d" ${SLURM_ARRAY_TASK_ID})'
+    if [[ $wflow -ne 1 ]]; then
+        nmem=(${nens//,/ })
+        mems=()
+        for m in ${nmem[@]}; do
+            if [[ $m =~ ^([0-9]+)-([0-9]+)$ ]]; then
+                #echo -$m-, ${BASH_REMATCH[1]}, ${BASH_REMATCH[2]}
+                for ((n=${BASH_REMATCH[1]};n<=${BASH_REMATCH[2]};n++)); do
+                    mems+=($n)
+                done
+            else
+                mems+=($m)
+            fi
+        done
+        subopt=($(tr ' ' '\n' <<< "${mems[@]}" | sort -u | tr '\n' ' '))
+        memstr='mid=$(printf "%03d" $1)'
+    else
+      subopt="-a $nens"
+    fi
+
+    exptdirbase=${EXPTDIR:0:${#EXPTDIR}-4}
+    EXPTDIR="${exptdirbase}_\${mid}"
+else
+    logstr="${tasknames[$task]}_%j"
+    memstr=" "
+    subopt=""
+fi
+
 if [[ $wflow -eq 1 ]]; then
     read -r -d '' taskheader <<EOF
 #!/bin/sh -l
@@ -216,11 +263,12 @@ if [[ $wflow -eq 1 ]]; then
 #SBATCH --nodes=${nodes} --ntasks-per-node=${ppn}
 #SBATCH --exclusive
 #SBATCH -t ${walltime}
-#SBATCH -o out.${tasknames[$task]}_%j
-#SBATCH -e err.${tasknames[$task]}_%j
+#SBATCH -o out.${logstr}
+#SBATCH -e err.${logstr}
 
 ${pythonstring}
 
+$memstr
 export EXPTDIR=${EXPTDIR}
 
 EOF
@@ -230,6 +278,7 @@ else
 
 ${pythonstring}
 
+$memstr
 export EXPTDIR=${EXPTDIR}
 
 EOF
@@ -245,19 +294,27 @@ sed "1d" ${CODEBASE}/ush/wrappers/${wrappers[$task]}  > ${jobscript}
 
 echo "$taskheader" | cat - ${jobscript} > temp && mv temp ${jobscript}
 
-if [[ $verb -eq 1 ]]; then
+#if [[ $verb -eq 1 ]]; then
     echo "jobscript: $WRKDIR/$jobscript is created."
-fi
+#fi
 
 if [[ $show -eq 1 ]]; then
     if [[ $wflow -eq 1 ]]; then
-        echo "Submit \"$WRKDIR/$jobscript\" manually to run <${tasknames[$task]}>."
+        echo "To run <${tasknames[$task]}>, submit the job manually as follow:"
+        echo "    \$> sbatch ${subopt} $WRKDIR/$jobscript"
     else
-        echo "Execute \"$WRKDIR/$jobscript\" manually to run <${tasknames[$task]}>."
+        echo "To run <${tasknames[$task]}>, execute the following command manually:"
+        if [[ $nens -ne 0 ]]; then
+            for mid in ${subopt[@]}; do
+                echo "    \$> $WRKDIR/${jobscript} $mid |& tee ${LOGDIR}/out.${tasknames[$task]}_$mid"
+            done
+        else
+            echo "    \$> $WRKDIR/${jobscript} |& tee ${LOGDIR}/out.${tasknames[$task]}"
+        fi
     fi
 else
     if [[ $wflow -eq 1 ]]; then
-        output=$(sbatch ${jobscript})
+        output=$(sbatch ${subopt} ${jobscript})
         if [[ $? -eq 0 ]]; then
             echo "${output}"
             words=(${output})
@@ -274,7 +331,13 @@ else
         fi
     else
         chmod +x ${jobscript}
-        ${jobscript} |& ${LOGDIR}/out.${tasknames[$task]}_${jobid}
+        if [[ $nens -ne 0 ]]; then
+            for mid in ${subopt[@]}; do
+                ${jobscript} $mid |& tee ${LOGDIR}/out.${tasknames[$task]}_$mid
+            done
+        else
+            ${jobscript} |& tee ${LOGDIR}/out.${tasknames[$task]}
+        fi
     fi
 fi
 
