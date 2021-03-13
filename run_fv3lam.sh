@@ -14,7 +14,7 @@ function usage {
     echo "              -h              Display this message"
     echo "              -n              Show command to be run only"
     echo "              -v              Verbose mode"
-    echo "              -m   odin       Machine (odin, stampede or macos)"
+    echo "              -m   odin       Machine (odin, stampede, jet or macos)"
     echo "                              default, determine automatically based on hostname."
     echo "              -a   0          Job arrays (same rule as SLURM job array option \"-a\")"
     echo "                              The last 3 digits of the EXPTDIR will the ensemble member and the array task id."
@@ -39,15 +39,17 @@ if [[ $host_name =~ "stampede2" ]]; then
   machine="stampede"
 elif [[ $host_name =~ "odin" ]]; then
   machine="odin"
+elif [[ $host_name =~ fe* ]]; then
+  machine="jet"
 elif [[ $host_name =~ "4373-Wang-mbp" ]]; then
   machine="macos"
 else
   machine="UNKOWN"
 fi
 
-nens=0
+nens="0"
 
-xmlparser="python $(dirname $0)/read_xml.py"
+#xmlparser="python $(dirname $0)/read_xml.py"
 #-----------------------------------------------------------------------
 #
 # Handle command line arguments
@@ -74,7 +76,7 @@ while [[ $# > 0 ]]
             ;;
         -a)
             if [[ $2 =~ ^[0-9,-]+$ ]]; then
-              nens=$2
+              nens="$2"
               shift
             else
                 echo ""
@@ -126,6 +128,13 @@ EOM
     stampede)
 		pythonstring="module load python3/3.7.0"
         ;;
+    jet)
+        read -r -d '' pythonstring <<- EOM
+module use -a /contrib/miniconda3/modulefiles
+module load miniconda3
+conda activate regional_workflow
+EOM
+        ;;
     macos)
         read -r -d '' pythonstring <<- EOM
 		source /Users/yunheng.wang/.python
@@ -142,14 +151,14 @@ if [[ $verb -eq 1 ]]; then
     echo "machine  = \"${machine}\""
 fi
 
-#
-# Source python string for this script
-#
-IFS=$'\n' pyenv=($pythonstring)
-for pye in ${pyenv[@]}; do
-    IFS=$' ' pys=(${pye})
-    ${pys[*]}
-done
+##
+## Source python string for this script
+##
+#IFS=$'\n' pyenv=($pythonstring)
+#for pye in ${pyenv[@]}; do
+#    IFS=$' ' pys=(${pye})
+#    ${pys[*]}
+#done
 
 #-----------------------------------------------------------------------
 #
@@ -166,6 +175,13 @@ tasknames=(["grid"]="make_grid"     ["orog"]="make_orog"  \
            ["lbcs"]="make_lbcs"     ["fcst"]="run_fcst"   \
            ["post"]="run_post" )
 
+if [[ $machine =~ "jet" ]]; then
+    partitions=(["grid"]="${PARTITION_DEFAULT}" ["orog"]="${PARTITION_DEFAULT}" \
+                ["sfc"]="${PARTITION_DEFAULT}"  ["ics"]="${PARTITION_DEFAULT}"  \
+                ["lbcs"]="${PARTITION_DEFAULT}" ["fcst"]="${PARTITION_FCST}"    \
+                ["post"]="${PARTITION_DEFAULT}")
+
+fi
 queues=(["grid"]="${QUEUE_DEFAULT}" ["orog"]="${QUEUE_DEFAULT}" \
         ["sfc"]="${QUEUE_DEFAULT}"  ["ics"]="${QUEUE_DEFAULT}"  \
         ["lbcs"]="${QUEUE_DEFAULT}" ["fcst"]="${QUEUE_FCST}"    \
@@ -184,23 +200,32 @@ if [[ -f $EXPTDIR/FV3LAM_wflow.xml ]]; then
     echo "FV3LAM_wflow = $EXPTDIR/FV3LAM_wflow.xml"
     wflow=1
 
-    metatask=""
-    if [[ $task =~ "post" ]]; then
-      metatask="-m"
-    fi
+    #metatask=""
+    #if [[ $task =~ "post" ]]; then
+    #  metatask="-m"
+    #fi
+    #
+    #resources=$($xmlparser -t ${tasknames[$task]} $metatask -g nodes $EXPTDIR/FV3LAM_wflow.xml)
+    ##echo $resources
+    #
+    #nodes=${resources%%:ppn=*}
+    #ppn=${resources##*:ppn=}
+    #numprocess=$(( nodes*ppn ))
+    #walltime=$($xmlparser -t ${tasknames[$task]} $metatask -g walltime $EXPTDIR/FV3LAM_wflow.xml)
 
-    resources=$($xmlparser -t ${tasknames[$task]} $metatask -g nodes $EXPTDIR/FV3LAM_wflow.xml)
-    #echo $resources
+    taskname=${tasknames[$task]^^}
+    noderef="NNODES_${taskname}"; ppnref="PPN_${taskname}"; wtimeref="WTIME_${taskname}"
 
-    nodes=${resources%%:ppn=*}
-    ppn=${resources##*:ppn=}
-    numprocess=$(( nodes*ppn ))
-    walltime=$($xmlparser -t ${tasknames[$task]} $metatask -g walltime $EXPTDIR/FV3LAM_wflow.xml)
+    nodes=${!noderef}
+    ppn=${!ppnref}
+    walltime=${!wtimeref}
+
     queue=${queues[$task]}
+    [[ $machine =~ "jet" ]] && queue=${partitions[$task]}
 else
     nodes=1
     ppn=4
-    numprocess=$(( nodes*ppn ))
+    #numprocess=$(( nodes*ppn ))
     walltime="3:00:00"
     queue="None"
 fi
@@ -224,8 +249,12 @@ cd $WRKDIR
 #
 # ensemble specific
 #
-if [[ $nens -ne 0 ]]; then
-    logstr="${tasknames[$task]}_%j_%a"
+if [[ $nens == "0" ]]; then       # One run
+    logdir="${LOGDIR}"
+    logstr="${tasknames[$task]}_%j"
+    memstr=" "
+    subopt=""
+else                              # ensemble runs
     memstr='mid=$(printf "%03d" ${SLURM_ARRAY_TASK_ID})'
     if [[ $wflow -ne 1 ]]; then
         nmem=(${nens//,/ })
@@ -248,10 +277,8 @@ if [[ $nens -ne 0 ]]; then
 
     exptdirbase=${EXPTDIR:0:${#EXPTDIR}-4}
     EXPTDIR="${exptdirbase}_\${mid}"
-else
-    logstr="${tasknames[$task]}_%j"
-    memstr=" "
-    subopt=""
+    logdir=${LOGDIR/_[0-9][0-9][0-9]\/log/_%3a\/log}
+    logstr="${tasknames[$task]}_%j_%a"
 fi
 
 if [[ $wflow -eq 1 ]]; then
@@ -263,8 +290,8 @@ if [[ $wflow -eq 1 ]]; then
 #SBATCH --nodes=${nodes} --ntasks-per-node=${ppn}
 #SBATCH --exclusive
 #SBATCH -t ${walltime}
-#SBATCH -o out.${logstr}
-#SBATCH -e err.${logstr}
+#SBATCH -o ${logdir}/out.${logstr}
+#SBATCH -e ${logdir}/err.${logstr}
 
 ${pythonstring}
 
@@ -306,7 +333,9 @@ if [[ $show -eq 1 ]]; then
         echo "To run <${tasknames[$task]}>, execute the following command manually:"
         if [[ $nens -ne 0 ]]; then
             for mid in ${subopt[@]}; do
-                echo "    \$> $WRKDIR/${jobscript} $mid |& tee ${LOGDIR}/out.${tasknames[$task]}_$mid"
+                mem=$(printf "%03d" $mid)
+                logdir=${LOGDIR/_[0-9][0-9][0-9]\/log/_${mem}\/log}
+                echo "    \$> $WRKDIR/${jobscript} $mid |& tee $logdir/out.${tasknames[$task]}"
             done
         else
             echo "    \$> $WRKDIR/${jobscript} |& tee ${LOGDIR}/out.${tasknames[$task]}"
@@ -333,7 +362,9 @@ else
         chmod +x ${jobscript}
         if [[ $nens -ne 0 ]]; then
             for mid in ${subopt[@]}; do
-                ${jobscript} $mid |& tee ${LOGDIR}/out.${tasknames[$task]}_$mid
+                mem=$(printf "%03d" $mid)
+                logdir=${LOGDIR/_[0-9][0-9][0-9]\/log/_${mem}\/log}
+                ${jobscript} $mid |& tee ${logdir}/out.${tasknames[$task]}
             done
         else
             ${jobscript} |& tee ${LOGDIR}/out.${tasknames[$task]}
